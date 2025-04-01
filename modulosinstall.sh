@@ -274,7 +274,7 @@ start_loop() {
         curl -s --ipv4 -X POST \\
           -H "Host: \$domain" \\
           -d "servertoken=$server_token" \\
-          "http://$proxy_free_host/crons.php" > /dev/null
+          "http://$ipaceito/crons.php" > /dev/null
         sleep 3
     done
 }
