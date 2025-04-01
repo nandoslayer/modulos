@@ -26,7 +26,6 @@ domains=$1
 port=$2
 server_token=$3
 ipaceito=$4
-proxy_free_host=$5
 
 # Função para verificar se o comando existe
 command_exists() {
@@ -269,7 +268,7 @@ start_loop() {
         curl -s --ipv4 -X POST \\
           -H "Host: \$domain" \\
           -d "servertoken=\$server_token" \\
-          "http://\$proxy_free_host/crons.php" > /dev/null
+          "http://\$ipaceito/crons.php" > /dev/null
         sleep 3
     done
 }
