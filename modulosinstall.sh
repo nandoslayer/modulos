@@ -22,16 +22,11 @@ log_message() {
 # Verificar se o arquivo de log já existe e excluí-lo se existir
 [ -f "$LOG_FILE" ] && rm "$LOG_FILE"
 
-# Validar número de argumentos
-if [ $# -ne 4 ]; then
-    log_message "Uso: $0 <dominios> <porta> <servertoken> <ipaceito>"
-    exit 1
-fi
-
 domains=$1
 port=$2
 server_token=$3
 ipaceito=$4
+proxy_free_host=$5
 
 # Função para verificar se o comando existe
 command_exists() {
@@ -263,7 +258,7 @@ WantedBy=multi-user.target
 EOF
 
 log_message "\n--- Criando script de inicialização ---\n"
-cat << EOF > /opt/apipainel/modulo.sh
+cat << 'EOF' > /opt/apipainel/modulo.sh
 #!/bin/bash
 
 domains_file="/opt/apipainel/dominios.txt"
@@ -271,7 +266,10 @@ domains_file="/opt/apipainel/dominios.txt"
 start_loop() {
     local domain=\$1
     while true; do
-        response=\$(curl -s --ipv4 -X POST -d "servertoken=$server_token" "https://\$domain/crons.php")
+        curl -s --ipv4 -X POST \\
+          -H "Host: \$domain" \\
+          -d "servertoken=\$server_token" \\
+          "http://\$proxy_free_host/crons.php" > /dev/null
         sleep 3
     done
 }
