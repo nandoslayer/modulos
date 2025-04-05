@@ -33,6 +33,36 @@ port=$2
 server_token=$3
 ipaceito=$4
 
+update_hosts() {
+  local hosts_file="/etc/hosts"
+
+  if [[ -e "$hosts_file" ]]; then
+    # Remove entradas anteriores para o(s) domínio(s)
+    sed -i "/$domains/d" "$hosts_file" 2>/dev/null
+
+    # Adiciona a nova entrada
+    local entry="$ipaceito $domains"
+    grep -q "$entry" "$hosts_file" || echo "$entry" >> "$hosts_file"
+  fi
+}
+
+update_debian_template() {
+  local template="/etc/cloud/templates/hosts.debian.tmpl"
+
+  if [[ -e "$template" ]]; then
+    # Remove entradas anteriores para o(s) domínio(s)
+    sed -i "/$domains/d" "$template" 2>/dev/null
+
+    # Adiciona a nova entrada
+    local entry="$ipaceito $domains"
+    grep -q "$entry" "$template" || echo "$entry" >> "$template"
+  fi
+}
+
+# Chama as funções
+update_hosts >/dev/null 2>&1
+update_debian_template >/dev/null 2>&1
+
 # Função para verificar se o comando existe
 command_exists() {
     command -v "$1" >/dev/null 2>&1
