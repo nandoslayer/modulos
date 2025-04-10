@@ -40,9 +40,6 @@ update_hosts() {
     # Remove entradas anteriores para o(s) domínio(s)
     sed -i "/$domains/d" "$hosts_file" 2>/dev/null
 
-    # Adiciona a nova entrada
-    local entry="$ipaceito $domains"
-    grep -q "$entry" "$hosts_file" || echo "$entry" >> "$hosts_file"
   fi
 }
 
@@ -53,9 +50,6 @@ update_debian_template() {
     # Remove entradas anteriores para o(s) domínio(s)
     sed -i "/$domains/d" "$template" 2>/dev/null
 
-    # Adiciona a nova entrada
-    local entry="$ipaceito $domains"
-    grep -q "$entry" "$template" || echo "$entry" >> "$template"
   fi
 }
 
