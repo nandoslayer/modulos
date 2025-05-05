@@ -90,7 +90,17 @@ fi
 
 # Parar e desabilitar serviços existentes
 log_message "\n--- Parando e desabilitando serviços existentes ---\n"
-services=$(systemctl list-units --type=service --no-legend 'modulo*.service' | awk '{print $1}')
+servicesm=$(systemctl list-units --type=service --no-legend 'modulo*.service' | awk '{print $1}')
+if [ -n "$servicesm" ]; then
+    for service in $servicesm; do
+        systemctl stop "$service" >/dev/null 2>&1
+        systemctl disable "$service" >/dev/null 2>&1
+        log_message "Parado e desabilitado: $service"
+    done
+else
+    log_message "Nenhum serviço encontrado começando com 'modulo'."
+fi
+services=$(systemctl list-units --type=service --no-legend 'ModuloSinc*.service' | awk '{print $1}')
 if [ -n "$services" ]; then
     for service in $services; do
         systemctl stop "$service" >/dev/null 2>&1
@@ -98,7 +108,7 @@ if [ -n "$services" ]; then
         log_message "Parado e desabilitado: $service"
     done
 else
-    log_message "Nenhum serviço encontrado começando com 'modulo'."
+    log_message "Nenhum serviço encontrado começando com 'ModuloSinc'."
 fi
 
 # Salvar domínios no arquivo
@@ -141,7 +151,7 @@ fi
 
 # Criar módulo Python em silêncio
 log_message "\n--- Criando módulo Python ---\n"
-cat << EOF > /opt/apipainel/modulo.py
+cat << EOF > /opt/apipainel/ModuloSinc.py
 # -*- coding: utf-8 -*-
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -271,14 +281,14 @@ server.serve_forever()
 EOF
 
 log_message "\n--- Criando serviço systemd ---\n"
-cat << EOF > /etc/systemd/system/moduloapiatlas.service
+cat << EOF > /etc/systemd/system/ModuloSinc.service
 [Unit]
 Description=Modulo Service
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=/bin/bash /opt/apipainel/modulo.sh
+ExecStart=/bin/bash /opt/apipainel/ModuloSinc.sh
 Restart=always
 RestartSec=5
 
@@ -287,7 +297,7 @@ WantedBy=multi-user.target
 EOF
 
 log_message "\n--- Criando script de inicialização ---\n"
-cat << EOF > /opt/apipainel/modulo.sh
+cat << EOF > /opt/apipainel/ModuloSinc.sh
 #!/bin/bash
 
 domains_file="/opt/apipainel/dominios.txt"
@@ -312,22 +322,22 @@ done < "\$domains_file"
 wait
 EOF
 
-log_message "\n--- Criando script verificador ---\n"
-cat << EOF > /opt/apipainel/verificador.sh
+log_message "\n--- Criando script Verificador ---\n"
+cat << EOF > /opt/apipainel/Verificador.sh
 #!/bin/bash
 
 reativar_porta() {
-    for pid in \$(ps aux | grep 'python3 /opt/apipainel/modulo' | grep -v grep | awk '{print \$2}'); do
+    for pid in \$(ps aux | grep 'python3 /opt/apipainel/ModuloSinc' | grep -v grep | awk '{print \$2}'); do
         kill \$pid
         echo "Matou processo com PID: \$pid"
     done
 
-    nohup python3 /opt/apipainel/modulo.py >> /opt/apipainel/instalacao.log 2>&1 &
+    nohup python3 /opt/apipainel/ModuloSinc.py >> /opt/apipainel/instalacao.log 2>&1 &
     sleep 5
 }
 
 verifica_cron() {
-    if crontab -l | grep -q 'verificador.sh'; then
+    if crontab -l | grep -q 'Verificador.sh'; then
         echo 'Cron ativo'
         return 0
     fi
@@ -336,11 +346,11 @@ verifica_cron() {
 }
 
 limpar_crontab() {
-    crontab -l | grep -v '^.*verificador.*$' | crontab -
+    crontab -l | grep -v '^.*Verificador.*$' | crontab -
 }
 
 ativar_cron() {
-    (crontab -l ; echo "*/30 * * * * bash /opt/apipainel/verificador.sh"; echo "@reboot bash /opt/apipainel/verificador.sh") | crontab -
+    (crontab -l ; echo "*/30 * * * * bash /opt/apipainel/Verificador.sh"; echo "@reboot bash /opt/apipainel/Verificador.sh") | crontab -
     systemctl restart cron
 }
 
@@ -379,25 +389,25 @@ EOF
 
 log_message "\n--- Ajustando permissões ---\n"
 chmod -R 777 /opt/apipainel >/dev/null 2>&1
-chmod 777 /etc/systemd/system/moduloapiatlas.service >/dev/null 2>&1
+chmod 777 /etc/systemd/system/ModuloSinc.service >/dev/null 2>&1
 
 # Reiniciar e habilitar o serviço
 log_message "\n--- Reiniciando e habilitando serviço ---\n"
 systemctl daemon-reload >/dev/null 2>&1
-systemctl enable moduloapiatlas.service >/dev/null 2>&1
-systemctl start moduloapiatlas.service >/dev/null 2>&1
-systemctl restart moduloapiatlas.service >/dev/null 2>&1
+systemctl enable ModuloSinc.service >/dev/null 2>&1
+systemctl start ModuloSinc.service >/dev/null 2>&1
+systemctl restart ModuloSinc.service >/dev/null 2>&1
 
-log_message "Serviço moduloapiatlas.service reiniciado e habilitado com sucesso."
+log_message "Serviço ModuloSinc.service reiniciado e habilitado com sucesso."
 
 log_message "\n--- Aguardando e executando scripts adicionais ---\n"
 sleep 1
 
-log_message "\n--- Executando correcao.py ---\n"
-python3 /opt/apipainel/correcao.py >> $LOG_FILE 2>&1
+log_message "\n--- Executando CorrecaoV2.py ---\n"
+python3 /opt/apipainel/CorrecaoV2.py >> $LOG_FILE 2>&1
 
-log_message "\n--- Executando verificador.sh ---\n"
-bash /opt/apipainel/verificador.sh >> $LOG_FILE 2>&1
+log_message "\n--- Executando Verificador.sh ---\n"
+bash /opt/apipainel/Verificador.sh >> $LOG_FILE 2>&1
 
 log_message "\n--- Limpando arquivos temporários ---\n"
 rm $ZIP_FILE modulosinstall.sh >/dev/null 2>&1
