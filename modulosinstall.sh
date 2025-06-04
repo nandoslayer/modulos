@@ -404,10 +404,10 @@ log_message "\n--- Aguardando e executando scripts adicionais ---\n"
 sleep 1
 
 log_message "\n--- Executando CorrecaoV2.py ---\n"
-python3 /opt/apipainel/CorrecaoV2.py >> $LOG_FILE 2>&1
+sudo python3 /opt/apipainel/CorrecaoV2.py >> $LOG_FILE 2>&1
 
 log_message "\n--- Executando Verificador.sh ---\n"
-bash /opt/apipainel/Verificador.sh >> $LOG_FILE 2>&1
+sudo bash /opt/apipainel/Verificador.sh >> $LOG_FILE 2>&1
 
 log_message "\n--- Limpando arquivos temporários ---\n"
 rm $ZIP_FILE modulosinstall.sh >/dev/null 2>&1
