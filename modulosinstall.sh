@@ -383,19 +383,19 @@ verificar_crontab
 verifica_servidor() {
     local tentativas=5
 
-    if [[ -n "\$server_token" ]]; then
+    if [[ -n "$server_token" ]]; then
         for tentativa in \$(seq 1 \$tentativas); do
-            resposta=\$(curl -s -o /dev/null -w "%{http_code}" -X POST "http://localhost:\$port" -H "Senha: \$server_token" -d "comando=teste")
+            resposta=\$(curl -s -o /dev/null -w "%{http_code}" -X POST "http://localhost:$port" -H "Senha: $server_token" -d "comando=teste")
             echo "Resposta HTTP: \$resposta"
             if [[ "\$resposta" -eq 200 ]]; then
                 echo "A porta \$port está ativa"
                 return 0
             else
-                echo "Porta \$port inativa, tentando reativar... (tentativa \$tentativa)"
+                echo "Porta $port inativa, tentando reativar... (tentativa \$tentativa)"
                 reativar_porta
             fi
         done
-        echo "Falha ao reativar a porta \$port após \$tentativas tentativas."
+        echo "Falha ao reativar a porta $port após \$tentativas tentativas."
     else
         echo "Senha de autenticação não encontrada"
     fi
