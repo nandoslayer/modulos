@@ -157,11 +157,11 @@ source "$HOME/.cargo/env"
 
 cd /opt/apipainel || return
 
-rm -rf /opt/apipainel/ModuloAtlas >/dev/null 2>&1
+rm -rf /opt/apipainel/Modulo >/dev/null 2>&1
 
-cargo new /opt/apipainel/ModuloAtlas --bin --name ModuloAtlas --quiet >/dev/null 2>&1
+cargo new /opt/apipainel/Modulo --bin --name ModuloAtlas --quiet >/dev/null 2>&1
 
-cd /opt/apipainel/ModuloAtlas || return
+cd /opt/apipainel/Modulo || return
 
 # Escreve Cargo.toml
 sudo tee Cargo.toml >/dev/null <<'CARGO_EOF'
@@ -169,6 +169,7 @@ sudo tee Cargo.toml >/dev/null <<'CARGO_EOF'
 name = "moduloatlas"
 version = "0.1.0"
 edition = "2021"
+authors = ["@nandoslayer"]
 
 [dependencies]
 axum = "0.6"
