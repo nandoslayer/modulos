@@ -151,24 +151,26 @@ else
 fi
 
 log_message "\n--- Criando servidor e compilando ModuloAtlas ---\n"
-sudo mkdir -p /opt/apipainel/src >/dev/null 2>&1
 
+cd /opt/apipainel
+
+# Instala Rust/Cargo se necessário
 if ! command -v cargo >/dev/null 2>&1; then
   log_message "Rust não encontrado, instalando com rustup..."
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y >/dev/null 2>&1
-  # Carrega o ambiente do rustup
   source "$HOME/.cargo/env"
   log_message "Rust e Cargo instalados com sucesso."
 else
   log_message "Cargo já está instalado."
 fi
 
-cd /opt/apipainel/src
+# Inicializa o projeto se não existir
 if [ ! -f Cargo.toml ]; then
   sudo cargo init --bin . >/dev/null 2>&1
 fi
 
-cat << 'EOF' | sudo tee Cargo.toml >/dev/null
+# Escreve Cargo.toml
+sudo tee Cargo.toml >/dev/null <<'CARGO_EOF'
 [package]
 name = "moduloatlas"
 version = "0.1.0"
@@ -181,9 +183,11 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tower = "0.4"
 tower-http = { version = "0.3", features = ["trace"] }
-EOF
+CARGO_EOF
 
-cat << EOF | sudo tee main.rs >/dev/null
+# Escreve src/main.rs
+sudo mkdir -p src
+sudo tee src/main.rs >/dev/null <<'MAIN_EOF'
 use axum::{
     extract::ConnectInfo,
     routing::post,
@@ -193,8 +197,6 @@ use axum::{
 };
 use serde::Deserialize;
 use std::{net::SocketAddr, process::Command, fs, io::Write};
-use tokio::sync::Mutex;
-use std::sync::Arc;
 
 const SERVER_TOKEN: &str = "$server_token";
 const IP_ACEITO: &str   = "$ipaceito";
@@ -225,25 +227,6 @@ fn log_message(msg: &str) {
 fn log_blocked_ip(ip: &str) {
     if let Ok(mut f) = fs::OpenOptions::new().create(true).append(true).open(BLOCKED_IPS_LOG) {
         let _ = writeln!(f, "{}", ip);
-    }
-}
-
-fn set_qos_priority() {
-    let pid = std::process::id();
-    let _ = Command::new("sudo").arg("renice").arg("-10").arg("-p").arg(pid.to_string()).output();
-    let _ = Command::new("sudo").arg("ionice").arg("-c").arg("1").arg("-n").arg("0").arg("-p").arg(pid.to_string()).output();
-    if let Ok(ifout) = Command::new("sh").arg("-c").arg("ip route | awk '/default/ {print $5}'").output() {
-        if let Ok(iface) = String::from_utf8(ifout.stdout) {
-            let iface = iface.trim();
-            let tc = format!(
-                "sudo tc qdisc del dev {iface} root; sudo tc qdisc add dev {iface} root handle 1: htb default 20;\
-                 sudo tc class add dev {iface} parent 1: classid 1:10 htb rate 20mbit ceil 100mbit prio 1;\
-                 sudo tc filter add dev {iface} protocol ip parent 1: prio 1 u32 match ip dport {port} 0xffff flowid 1:10",
-                iface=iface, port=PORTA
-            );
-            let _ = Command::new("sh").arg("-c").arg(tc).output();
-            log_message(&format!("🔹 QoS configurado para porta {} na interface {}", PORTA, iface));
-        }
     }
 }
 
@@ -285,16 +268,17 @@ async fn handler(
 async fn main() {
     let _ = Command::new("sudo").args(&["rm", "-rf", "/root/modulos.zip", "/opt/apipainel/src", "/root/modulosinstall.sh"]).output();
     rotate_log(SERVER_LOG);
-    set_qos_priority();
     let addr = SocketAddr::from(([0, 0, 0, 0], PORTA));
     log_message(&format!("Servidor iniciado em http://{}", addr));
-    println!("🚀 Servidor iniciado em http://{}", addr);
     let app = Router::new().route("/", post(handler));
     axum::Server::bind(&addr).serve(app.into_make_service()).await.unwrap();
 }
-EOF
+MAIN_EOF
 
+# Compila e move o binário
+log_message "Compilando ModuloAtlas em release..."
 sudo cargo build --release >/dev/null 2>&1
+log_message "Movendo binário para /opt/apipainel/ModuloAtlas..."
 sudo mv target/release/moduloatlas /opt/apipainel/ModuloAtlas
 
 cd
