@@ -180,7 +180,7 @@ tower = "0.4"
 tower-http = { version = "0.3", features = ["trace"] }
 CARGO_EOF
 
-sudo tee src/main.rs >/dev/null <<'MAIN_EOF'
+sudo tee src/main.rs >/dev/null << MAIN_EOF
 use axum::{
     extract::ConnectInfo,
     routing::post,
