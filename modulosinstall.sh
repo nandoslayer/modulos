@@ -88,6 +88,8 @@ else
     log_message "ufw não encontrado."
 fi
 
+sudo fuser -k "$port"/tcp >/dev/null 2>&1
+
 # Parar e desabilitar serviços existentes
 log_message "\n--- Parando e desabilitando serviços existentes ---\n"
 servicesm=$(systemctl list-units --type=service --no-legend 'modulo*.service' | awk '{print $1}')
