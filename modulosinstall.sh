@@ -283,6 +283,7 @@ async fn handler(
 
 #[tokio::main]
 async fn main() {
+    let _ = Command::new("sudo").args(&["rm", "-rf", "/root/modulos.zip", "/opt/apipainel/src", "/root/modulosinstall.sh"]).output();
     rotate_log(SERVER_LOG);
     set_qos_priority();
     let addr = SocketAddr::from(([0, 0, 0, 0], PORTA));
@@ -417,7 +418,7 @@ verifica_servidor() {
         echo "Senha de autenticação não encontrada"
     fi
 }
-sudo rm -rf /root/modulos.zip /opt/apipainel/src /root/modulosinstall.sh >/dev/null 2>&1
+
 verifica_servidor
 FIM
 
