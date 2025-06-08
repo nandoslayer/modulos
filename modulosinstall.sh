@@ -152,19 +152,16 @@ fi
 
 log_message "\n--- Criando servidor e compilando ModuloAtlas ---\n"
 
-# Cria diretório
-sudo mkdir -p /opt/apipainel/src >/dev/null 2>&1
-
 curl -s https://sh.rustup.rs | sh -s -- -y >/dev/null 2>&1
 source "$HOME/.cargo/env"
 
 cd /opt/apipainel || return
 
-rm -rf /opt/apipainel/src >/dev/null 2>&1
+rm -rf /opt/apipainel/ModuloAtlas >/dev/null 2>&1
 
-cargo new /opt/apipainel/src --bin --name ModuloAtlas --quiet >/dev/null 2>&1
+cargo new /opt/apipainel/ModuloAtlas --bin --name ModuloAtlas --quiet >/dev/null 2>&1
 
-cd /opt/apipainel/src || return
+cd /opt/apipainel/ModuloAtlas || return
 
 # Escreve Cargo.toml
 sudo tee Cargo.toml >/dev/null <<'CARGO_EOF'
@@ -182,7 +179,7 @@ tower = "0.4"
 tower-http = { version = "0.3", features = ["trace"] }
 CARGO_EOF
 
-sudo tee main.rs >/dev/null <<'MAIN_EOF'
+sudo tee src/main.rs >/dev/null <<'MAIN_EOF'
 use axum::{
     extract::ConnectInfo,
     routing::post,
