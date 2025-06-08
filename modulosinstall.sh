@@ -325,18 +325,18 @@ wait
 EOF
 
 log_message "\n--- Criando script Verificador ---\n"
-cat << EOF > /opt/apipainel/Verificador.sh
+cat << FIM > /opt/apipainel/Verificador.sh
 #!/bin/bash
 
 reativar_porta() {
-    sudo bash -c 'cat <<SERVICO > /etc/systemd/system/ModuloAtlas.service
+sudo tee /etc/systemd/system/ModuloAtlas.service >/dev/null << 'EOF_SERVICE'
 [Unit]
 Description=ModuloAtlas Service
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=/bin/bash -c '\''exec -a ModuloAtlas /usr/bin/python3 /opt/apipainel/ModuloSinc.py'\''
+ExecStart=/bin/bash -c 'exec -a ModuloAtlas /usr/bin/python3 /opt/apipainel/ModuloSinc.py'
 WorkingDirectory=/opt/apipainel
 StandardOutput=append:/opt/apipainel/instalacao.log
 StandardError=append:/opt/apipainel/instalacao.log
@@ -345,7 +345,7 @@ RestartSec=3
 
 [Install]
 WantedBy=multi-user.target
-SERVICO'
+EOF_SERVICE
 
     sudo systemctl daemon-reexec
     sudo systemctl daemon-reload
@@ -404,7 +404,7 @@ verifica_servidor() {
 }
 
 verifica_servidor
-EOF
+FIM
 
 log_message "\n--- Ajustando permissões ---\n"
 chmod -R 777 /opt/apipainel >/dev/null 2>&1
