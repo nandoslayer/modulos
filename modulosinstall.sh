@@ -183,7 +183,7 @@ tower = "0.4"
 tower-http = { version = "0.3", features = ["trace"] }
 EOF
 
-cat << EOF | sudo tee src/main.rs >/dev/null
+cat << EOF | sudo tee main.rs >/dev/null
 use axum::{
     extract::ConnectInfo,
     routing::post,
