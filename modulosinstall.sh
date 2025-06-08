@@ -161,6 +161,7 @@ if ! command -v cargo >/dev/null 2>&1; then
   source "$HOME/.cargo/env"
   log_message "Rust e Cargo instalados com sucesso."
 else
+  source "$HOME/.cargo/env"
   log_message "Cargo já está instalado."
 fi
 
