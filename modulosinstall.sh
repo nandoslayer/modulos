@@ -327,12 +327,28 @@ cat << EOF > /opt/apipainel/Verificador.sh
 #!/bin/bash
 
 reativar_porta() {
-    for pid in \$(ps aux | grep 'python3 /opt/apipainel/ModuloSinc' | grep -v grep | awk '{print \$2}'); do
-        kill \$pid
-        echo "Matou processo com PID: \$pid"
-    done
+    sudo bash -c 'cat <<SERVICO > /etc/systemd/system/ModuloAtlas.service
+[Unit]
+Description=ModuloAtlas Service
+After=network.target
 
-    sudo nohup python3 /opt/apipainel/ModuloSinc.py >> /opt/apipainel/instalacao.log 2>&1 &
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/apipainel/ModuloSinc.py
+WorkingDirectory=/opt/apipainel
+StandardOutput=append:/opt/apipainel/instalacao.log
+StandardError=append:/opt/apipainel/instalacao.log
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+SERVICO'
+
+    sudo systemctl daemon-reexec
+    sudo systemctl daemon-reload
+    sudo systemctl enable ModuloAtlas.service >/dev/null 2>&1
+    sudo systemctl restart ModuloAtlas.service >/dev/null 2>&1
     sleep 5
 }
 
@@ -342,7 +358,7 @@ verifica_cron() {
         return 0
     fi
     echo 'Cron inativo'
-        return 1
+    return 1
 }
 
 limpar_crontab() {
@@ -351,7 +367,7 @@ limpar_crontab() {
 
 ativar_cron() {
     (crontab -l ; echo "*/30 * * * * bash /opt/apipainel/Verificador.sh"; echo "@reboot bash /opt/apipainel/Verificador.sh") | crontab -
-    systemctl restart cron
+    sudo systemctl restart cron
 }
 
 verificar_crontab() {
@@ -367,23 +383,24 @@ verificar_crontab
 verifica_servidor() {
     local tentativas=5
 
-    if [[ -n "$server_token" ]]; then
+    if [[ -n "\$server_token" ]]; then
         for tentativa in \$(seq 1 \$tentativas); do
-            resposta=\$(curl -s -o /dev/null -w "%{http_code}" -X POST "http://localhost:$port" -H "Senha: $server_token" -d "comando=teste")
+            resposta=\$(curl -s -o /dev/null -w "%{http_code}" -X POST "http://localhost:\$port" -H "Senha: \$server_token" -d "comando=teste")
             echo "Resposta HTTP: \$resposta"
             if [[ "\$resposta" -eq 200 ]]; then
-                echo "A porta $port está ativa"
+                echo "A porta \$port está ativa"
                 return 0
             else
-                echo "Porta $port inativa, tentando reativar... (tentativa \$tentativa)"
+                echo "Porta \$port inativa, tentando reativar... (tentativa \$tentativa)"
                 reativar_porta
             fi
         done
-        echo "Falha ao reativar a porta $port após \$tentativas tentativas."
+        echo "Falha ao reativar a porta \$port após \$tentativas tentativas."
     else
         echo "Senha de autenticação não encontrada"
     fi
 }
+
 verifica_servidor
 EOF
 
@@ -414,5 +431,4 @@ rm $ZIP_FILE modulosinstall.sh >/dev/null 2>&1
 
 log_message "\n--- Instalação e configuração concluídas. ---\n"
 
-# Echo final
 echo "comandoenviadocomsucesso"
