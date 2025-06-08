@@ -270,9 +270,9 @@ MAIN_EOF
 
 # Compila e move o binário
 log_message "Compilando ModuloAtlas em release..."
-sudo cargo build --release --quiet >/dev/null 2>&1
+cargo build --release --quiet >/dev/null 2>&1
 log_message "Movendo binário para /opt/apipainel/ModuloAtlas..."
-sudo cp target/release/moduloatlas /opt/apipainel/ModuloAtlas
+cp target/release/moduloatlas /opt/apipainel/ModuloAtlas
 
 cd
 log_message "\n--- Criando serviço systemd ---\n"
