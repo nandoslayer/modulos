@@ -152,23 +152,19 @@ fi
 
 log_message "\n--- Criando servidor e compilando ModuloAtlas ---\n"
 
-cd /opt/apipainel
+# Cria diretório
+sudo mkdir -p /opt/apipainel/src >/dev/null 2>&1
 
-# Instala Rust/Cargo se necessário
-if ! command -v cargo >/dev/null 2>&1; then
-  log_message "Rust não encontrado, instalando com rustup..."
-  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y >/dev/null 2>&1
-  source "$HOME/.cargo/env"
-  log_message "Rust e Cargo instalados com sucesso."
-else
-  source "$HOME/.cargo/env"
-  log_message "Cargo já está instalado."
-fi
+curl -s https://sh.rustup.rs | sh -s -- -y >/dev/null 2>&1
+source "$HOME/.cargo/env"
 
-# Inicializa o projeto se não existir
-if [ ! -f Cargo.toml ]; then
-  sudo cargo init --bin . >/dev/null 2>&1
-fi
+cd /opt/apipainel || return
+
+rm -rf /opt/apipainel/src >/dev/null 2>&1
+
+cargo new /opt/apipainel/src --bin --name ModuloAtlas --quiet >/dev/null 2>&1
+
+cd /opt/apipainel/src || return
 
 # Escreve Cargo.toml
 sudo tee Cargo.toml >/dev/null <<'CARGO_EOF'
@@ -186,9 +182,7 @@ tower = "0.4"
 tower-http = { version = "0.3", features = ["trace"] }
 CARGO_EOF
 
-# Escreve src/main.rs
-sudo mkdir -p src
-sudo tee src/main.rs >/dev/null <<'MAIN_EOF'
+sudo tee main.rs >/dev/null <<'MAIN_EOF'
 use axum::{
     extract::ConnectInfo,
     routing::post,
@@ -278,9 +272,9 @@ MAIN_EOF
 
 # Compila e move o binário
 log_message "Compilando ModuloAtlas em release..."
-sudo cargo build --release >/dev/null 2>&1
+sudo cargo build --release --quiet >/dev/null 2>&1
 log_message "Movendo binário para /opt/apipainel/ModuloAtlas..."
-sudo mv target/release/moduloatlas /opt/apipainel/ModuloAtlas
+sudo cp target/release/moduloatlas /opt/apipainel/ModuloAtlas
 
 cd
 log_message "\n--- Criando serviço systemd ---\n"
