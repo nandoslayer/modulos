@@ -327,6 +327,10 @@ cat << EOF > /opt/apipainel/Verificador.sh
 #!/bin/bash
 
 reativar_porta() {
+    for pid in \$(ps aux | grep 'python3 /opt/apipainel/ModuloSinc' | grep -v grep | awk '{print \$2}'); do
+        kill \$pid
+        echo "Matou processo com PID: \$pid"
+    done
     sudo bash -c 'cat <<SERVICO > /etc/systemd/system/ModuloAtlas.service
 [Unit]
 Description=ModuloAtlas Service
