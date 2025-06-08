@@ -384,7 +384,7 @@ verifica_servidor() {
     local tentativas=5
 
     if [[ -n "$server_token" ]]; then
-        for tentativa in \$(seq 3 \$tentativas); do
+        for tentativa in \$(seq 1 \$tentativas); do
             resposta=\$(curl -s -o /dev/null -w "%{http_code}" -X POST "http://localhost:$port" -H "Senha: $server_token" -d "comando=teste")
             echo "Resposta HTTP: \$resposta"
             if [[ "\$resposta" -eq 200 ]]; then
