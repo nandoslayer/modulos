@@ -163,7 +163,7 @@ else
   log_message "Cargo já está instalado."
 fi
 
-cd /opt/apipainel
+cd /opt/apipainel/src
 if [ ! -f Cargo.toml ]; then
   sudo cargo init --bin . >/dev/null 2>&1
 fi
