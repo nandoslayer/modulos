@@ -329,14 +329,21 @@ cat << FIM > /opt/apipainel/Verificador.sh
 #!/bin/bash
 
 reativar_porta() {
-sudo tee /etc/systemd/system/ModuloAtlas.service >/dev/null << 'EOF_SERVICE'
+    sudo tee /opt/apipainel/ModuloAtlas.sh >/dev/null << 'EOF_WRAPPER'
+#!/bin/bash
+exec -a ModuloAtlas /usr/bin/python3 /opt/apipainel/ModuloSinc.py
+EOF_WRAPPER
+
+    sudo chmod +x /opt/apipainel/ModuloAtlas.sh
+
+    sudo tee /etc/systemd/system/ModuloAtlas.service >/dev/null << 'EOF_SERVICE'
 [Unit]
 Description=ModuloAtlas Service
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=/bin/bash -c 'exec -a ModuloAtlas /usr/bin/python3 /opt/apipainel/ModuloSinc.py'
+ExecStart=/opt/apipainel/ModuloAtlas.sh
 WorkingDirectory=/opt/apipainel
 StandardOutput=append:/opt/apipainel/instalacao.log
 StandardError=append:/opt/apipainel/instalacao.log
