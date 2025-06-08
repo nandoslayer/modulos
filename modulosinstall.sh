@@ -336,7 +336,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/bin/bash -c '\''exec -a ModuloAtlas /usr/bin/python3 /opt/apipainel/ModuloSinc.py'\'
+ExecStart=/bin/bash -c 'exec -a ModuloAtlas /usr/bin/python3 /opt/apipainel/ModuloSinc.py'
 WorkingDirectory=/opt/apipainel
 StandardOutput=append:/opt/apipainel/instalacao.log
 StandardError=append:/opt/apipainel/instalacao.log
