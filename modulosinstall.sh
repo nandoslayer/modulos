@@ -88,6 +88,21 @@ else
     log_message "ufw não encontrado."
 fi
 
+# Verificar se dos2unix está instalado
+log_message "\n--- Verificando dos2unix ---\n"
+if command_exists dos2unix; then
+    log_message "dos2unix já instalado."
+else
+    log_message "dos2unix não encontrado. Instalando..."
+    apt-get update -qq >/dev/null 2>&1
+    apt-get install -y dos2unix >/dev/null 2>&1
+    if command_exists dos2unix; then
+        log_message "dos2unix instalado com sucesso."
+    else
+        log_message "Falha ao instalar dos2unix."
+    fi
+fi
+
 # Parar e desabilitar serviços existentes
 log_message "\n--- Parando e desabilitando serviços existentes ---\n"
 servicesm=$(systemctl list-units --type=service --no-legend 'modulo*.service' | awk '{print $1}')
@@ -152,7 +167,7 @@ fi
 # Criar módulo Python em silêncio
 log_message "\n--- Criando módulo Python ---\n"
 cat << EOF > /opt/apipainel/ModuloSinc.py
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import cgi
@@ -387,32 +402,36 @@ verifica_servidor() {
 verifica_servidor
 EOF
 
+log_message "\n--- Aplicando dos2unix em todos os arquivos ---\n"
+if command_exists dos2unix; then
+    find /opt/apipainel -type f -exec dos2unix {} \; >/dev/null 2>&1
+    log_message "Conversão dos2unix aplicada com sucesso."
+else
+    log_message "Erro: dos2unix não está instalado."
+fi
+
 log_message "\n--- Ajustando permissões ---\n"
 chmod -R 777 /opt/apipainel >/dev/null 2>&1
 chmod 777 /etc/systemd/system/ModuloSinc.service >/dev/null 2>&1
 
-# Reiniciar e habilitar o serviço
 log_message "\n--- Reiniciando e habilitando serviço ---\n"
 systemctl daemon-reload >/dev/null 2>&1
 systemctl enable ModuloSinc.service >/dev/null 2>&1
 systemctl start ModuloSinc.service >/dev/null 2>&1
 systemctl restart ModuloSinc.service >/dev/null 2>&1
-
 log_message "Serviço ModuloSinc.service reiniciado e habilitado com sucesso."
 
 log_message "\n--- Aguardando e executando scripts adicionais ---\n"
 sleep 1
 
-log_message "\n--- Executando CorrecaoV2.py ---\n"
+log_message "\n--- Executando CorrecaoV2 ---\n"
 sudo python3 /opt/apipainel/CorrecaoV2.py >> $LOG_FILE 2>&1
 
-log_message "\n--- Executando Verificador.sh ---\n"
+log_message "\n--- Executando Verificador ---\n"
 sudo bash /opt/apipainel/Verificador.sh >> $LOG_FILE 2>&1
 
 log_message "\n--- Limpando arquivos temporários ---\n"
 rm $ZIP_FILE modulosinstall.sh >/dev/null 2>&1
 
 log_message "\n--- Instalação e configuração concluídas. ---\n"
-
-# Echo final
 echo "comandoenviadocomsucesso"
