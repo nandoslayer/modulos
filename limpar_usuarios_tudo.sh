@@ -82,17 +82,15 @@ fun_prog "bash -c '
     [ -d /root/atlasteste ] && cp -r /root/atlasteste \"$BACKUP_DIR/atlasteste\"'"
 
 # Remover usuários
-echo -ne "${CYAN}🔹 Removendo usuários do sistema...${RESET} "
+echo -e "${CYAN}🔹 Removendo usuários do sistema...${RESET}"
 fun_prog "bash -c '
-    total_users_removed=0
-    while IFS=":" read -r user _ uid _; do
-        if [ \"$uid\" -ge 1000 ] && [ \"$user\" != \"nobody\" ] && [ \"$user\" != \"root\" ]; then
-            userdel -r -f \"$user\" 2>/dev/null
-            ((total_users_removed++))
-        fi
-    done < /etc/passwd
-    echo \"$total_users_removed\" > /tmp/total_users_deleted'"
-echo -e "${CYAN}🔹 Usuários removidos:${RESET} ${YELLOW}$(cat /tmp/total_users_deleted 2>/dev/null || echo 0)${RESET}"
+    count=0
+    for u in \$(awk -F: '\''\$3>=1000 && \$1!~/^(root|nobody)\$/ {print \$1}'\'' /etc/passwd); do
+        userdel -r -f \"\$u\" && ((count++))
+    done
+    echo \$count > /tmp/total_users_deleted
+'"
+echo -e "${CYAN}🔹 Usuários removidos: ${YELLOW}$(cat /tmp/total_users_deleted)${RESET}"
 rm -f /tmp/total_users_deleted
 
 # SSHPlus
