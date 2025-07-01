@@ -83,15 +83,13 @@ fun_prog "bash -c '
 
 # Remover usuários
 echo -e "${CYAN}🔹 Removendo usuários do sistema...${RESET}"
-fun_prog "bash -c '
-    count=0
-    for u in \$(awk -F: '\''\$3>=1000 && \$1!~/^(root|nobody)\$/ {print \$1}'\'' /etc/passwd); do
-        userdel -r -f \"\$u\" && ((count++))
-    done
-    echo \$count > /tmp/total_users_deleted
+fun_prog "bash -lc '
+  awk -F: '\''\$3>=1000 && \$1!~/^(root|nobody)$/ {print \$1}'\'' /etc/passwd \
+    | tee /tmp/removed_users \
+    | xargs -r -n1 userdel -r -f
 '"
-echo -e "${CYAN}🔹 Usuários removidos: ${YELLOW}$(cat /tmp/total_users_deleted)${RESET}"
-rm -f /tmp/total_users_deleted
+echo -e "${CYAN}🔹 Usuários removidos: ${YELLOW}$(wc -l < /tmp/removed_users)${RESET}"
+rm -f /tmp/removed_users
 
 # SSHPlus
 echo -ne "${CYAN}🔹 Limpando senhas SSHPlus...${RESET} "
