@@ -9,7 +9,8 @@ RESET='\033[0m'
 
 fun_prog() {
   local comando="$1"
-  ${comando} > /dev/null 2>&1 &
+  # usa eval para interpretar loops e redirecionamentos corretamente
+  eval "$comando" > /dev/null 2>&1 &
   pid=$!
   tput civis
   echo -ne "\033[1;32m.\033[1;33m.\033[1;31m. \033[1;32m"
@@ -33,63 +34,74 @@ echo "- Limpar arquivos de teste"
 echo -e "- Remover todos os usuários de V2Ray e Xray (clientes do JSON)${RESET}"
 echo
 
-ULTIMO_BACKUP=$(ls -dt /root/backup_limpeza_* 2>/dev/null | head -n1)
-if [ -d "$ULTIMO_BACKUP" ]; then
-    echo -e "${GREEN}📦 Backup encontrado: ${ULTIMO_BACKUP}${RESET}"
-    read -p $'\033[1;33mDeseja restaurar este backup? (s/N): \033[0m' restaura
-    if [[ "$restaura" == "s" || "$restaura" == "S" ]]; then
-        echo -ne "${CYAN}🔄 Restaurando backup...${RESET} "
-        fun_prog "bash -c '
-            cp \"$ULTIMO_BACKUP/passwd\" /etc/passwd 2>/dev/null
-            cp \"$ULTIMO_BACKUP/shadow\" /etc/shadow 2>/dev/null
-            cp \"$ULTIMO_BACKUP/group\" /etc/group 2>/dev/null
-            cp \"$ULTIMO_BACKUP/gshadow\" /etc/gshadow 2>/dev/null
-            [ -f \"$ULTIMO_BACKUP/usuarios.db\" ] && cp \"$ULTIMO_BACKUP/usuarios.db\" /root/usuarios.db
-            [ -d \"$ULTIMO_BACKUP/senha\" ] && cp -r \"$ULTIMO_BACKUP/senha\" /etc/SSHPlus/
-            [ -f \"$ULTIMO_BACKUP/v2ray_config.json\" ] && cp \"$ULTIMO_BACKUP/v2ray_config.json\" /etc/v2ray/config.json
-            [ -f \"$ULTIMO_BACKUP/xray_config.json\" ] && cp \"$ULTIMO_BACKUP/xray_config.json\" /usr/local/etc/xray/config.json
-            [ -d \"$ULTIMO_BACKUP/TesteAtlas\" ] && cp -r \"$ULTIMO_BACKUP/TesteAtlas\" /etc/
-            [ -d \"$ULTIMO_BACKUP/atlasteste\" ] && cp -r \"$ULTIMO_BACKUP/atlasteste\" /root/'"
-        echo -e "${GREEN}✓ Backup restaurado com sucesso.${RESET}"
-        exit 0
-    else
-        # Apagar todos os backups, exceto o mais recente
-        for dir in /root/backup_limpeza_*; do
-            [ "$dir" != "$ULTIMO_BACKUP" ] && rm -rf "$dir"
-        done
-    fi
+# Detecta o backup mais recente
+BACKUP_DIR=$(ls -dt /root/backup_limpeza_* 2>/dev/null | head -n1)
+
+if [[ -n "$BACKUP_DIR" && -d "$BACKUP_DIR" ]]; then
+  echo -e "${GREEN}📦 Backup encontrado: ${BACKUP_DIR}${RESET}"
+  read -rp $'\033[1;33mDeseja restaurar este backup? (s/N): \033[0m' RESTORE
+  case "$RESTORE" in
+    [sS])
+      echo -ne "${CYAN}🔄 Restaurando backup...${RESET} "
+      fun_prog "bash -c \"
+        cp '$BACKUP_DIR'/passwd /etc/passwd
+        cp '$BACKUP_DIR'/shadow /etc/shadow
+        cp '$BACKUP_DIR'/group /etc/group
+        cp '$BACKUP_DIR'/gshadow /etc/gshadow
+        [ -f '$BACKUP_DIR'/usuarios.db ] && cp '$BACKUP_DIR'/usuarios.db /root/usuarios.db
+        [ -d '$BACKUP_DIR'/senha ] && cp -r '$BACKUP_DIR'/senha /etc/SSHPlus/
+        [ -f '$BACKUP_DIR'/v2ray_config.json ] && cp '$BACKUP_DIR'/v2ray_config.json /etc/v2ray/config.json
+        [ -f '$BACKUP_DIR'/xray_config.json ] && cp '$BACKUP_DIR'/xray_config.json /usr/local/etc/xray/config.json
+        [ -d '$BACKUP_DIR'/TesteAtlas ] && cp -r '$BACKUP_DIR'/TesteAtlas /etc/
+        [ -d '$BACKUP_DIR'/atlasteste ] && cp -r '$BACKUP_DIR'/atlasteste /root/atlasteste
+      \""
+      echo -e "${GREEN}✓ Backup restaurado com sucesso.${RESET}"
+      exit 0
+      ;;
+    *)
+      # remove todos os backups antigos
+      for d in /root/backup_limpeza_*; do
+        [[ "$d" != "$BACKUP_DIR" ]] && rm -rf "$d"
+      done
+      ;;
+  esac
 fi
 
 read -p $'\033[1;31mDeseja continuar com a limpeza? (s/N): \033[0m' confirm
-if [[ "$confirm" != "s" && "$confirm" != "S" ]]; then
-    echo -e "${CYAN}❌ Operação cancelada.${RESET}"
-    exit 1
+if [[ ! "$confirm" =~ ^[sS]$ ]]; then
+  echo -e "${CYAN}❌ Operação cancelada.${RESET}"
+  exit 1
 fi
 
-echo -ne "${CYAN}⏳ Iniciando limpeza...${RESET}\n"
+echo -e "${CYAN}⏳ Iniciando limpeza...${RESET}\n"
 
 # Backup
 echo -ne "${CYAN}🔹 Gerando backup de segurança...${RESET} "
 fun_prog "bash -c '
-    BACKUP_DIR=\"/root/backup_limpeza_$(date +%Y%m%d_%H%M%S)\"
-    mkdir -p \"$BACKUP_DIR\"
-    cp /etc/passwd /etc/shadow /etc/group /etc/gshadow \"$BACKUP_DIR\"
-    [ -f /root/usuarios.db ] && cp /root/usuarios.db \"$BACKUP_DIR\"
-    [ -d /etc/SSHPlus/senha ] && cp -r /etc/SSHPlus/senha \"$BACKUP_DIR/senha\"
-    [ -f /etc/v2ray/config.json ] && cp /etc/v2ray/config.json \"$BACKUP_DIR/v2ray_config.json\"
-    [ -f /usr/local/etc/xray/config.json ] && cp /usr/local/etc/xray/config.json \"$BACKUP_DIR/xray_config.json\"
-    [ -d /etc/TesteAtlas ] && cp -r /etc/TesteAtlas \"$BACKUP_DIR/TesteAtlas\"
-    [ -d /root/atlasteste ] && cp -r /root/atlasteste \"$BACKUP_DIR/atlasteste\"'"
+  BACKUP_DIR=\"/root/backup_limpeza_$(date +%Y%m%d_%H%M%S)\"
+  mkdir -p \"$BACKUP_DIR\"
+  cp /etc/passwd /etc/shadow /etc/group /etc/gshadow \"$BACKUP_DIR\"
+  [ -f /root/usuarios.db ] && cp /root/usuarios.db \"$BACKUP_DIR\"
+  [ -d /etc/SSHPlus/senha ] && cp -r /etc/SSHPlus/senha \"$BACKUP_DIR/senha\"
+  [ -f /etc/v2ray/config.json ] && cp /etc/v2ray/config.json \"$BACKUP_DIR/v2ray_config.json\"
+  [ -f /usr/local/etc/xray/config.json ] && cp /usr/local/etc/xray/config.json \"$BACKUP_DIR/xray_config.json\"
+  [ -d /etc/TesteAtlas ] && cp -r /etc/TesteAtlas \"$BACKUP_DIR/TesteAtlas\"
+  [ -d /root/atlasteste ] && cp -r /root/atlasteste \"$BACKUP_DIR/atlasteste\"'"
 
 # Remover usuários
-echo -e "${CYAN}🔹 Removendo usuários do sistema...${RESET}"
-fun_prog "bash -lc '
-  awk -F: '\''\$3>=1000 && \$1!~/^(root|nobody)$/ {print \$1}'\'' /etc/passwd \
-    | tee /tmp/removed_users \
-    | xargs -r -n1 userdel -r -f
+echo -e "${CYAN}🔹 Removendo usuários do sistema!${RESET}"
+# prepara lista e contador
+awk -F: '$3>=1000 && $1!~/^(root|nobody)$/{print $1}' /etc/passwd > /tmp/removed_list
+count=$(wc -l < /tmp/removed_list)
+echo -ne "${CYAN}🔹 $count usuários para remover...${RESET} "
+# executa a remoção com spinner
+fun_prog "bash -c '
+  while IFS= read -r u; do
+    userdel -r -f \"\$u\"
+  done < /tmp/removed_list
 '"
-echo -e "${CYAN}🔹 Usuários removidos: ${YELLOW}$(wc -l < /tmp/removed_users)${RESET}"
-rm -f /tmp/removed_users
+echo -e "${CYAN}🔹 Usuários removidos: ${YELLOW}$count${RESET}"
+rm -f /tmp/removed_list
 
 # SSHPlus
 echo -ne "${CYAN}🔹 Limpando senhas SSHPlus...${RESET} "
