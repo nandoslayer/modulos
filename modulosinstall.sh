@@ -22,6 +22,18 @@ log_message() {
 # Verificar se o arquivo de log já existe e excluí-lo se existir
 [ -f "$LOG_FILE" ] && rm "$LOG_FILE"
 
+# Finaliza qualquer instância ativa do ModuloSinc.py
+log_message "\n--- Finalizando processos ModuloSinc.py existentes ---\n"
+pids=$(ps aux | grep '[M]oduloSinc.py' | awk '{print $2}')
+if [ -n "$pids" ]; then
+    for pid in $pids; do
+        kill -9 "$pid" >/dev/null 2>&1
+        log_message "Processo ModuloSinc.py encerrado (PID: $pid)"
+    done
+else
+    log_message "Nenhum processo ModuloSinc.py em execução."
+fi
+
 # Validar número de argumentos
 if [ $# -ne 4 ]; then
     log_message "Uso: $0 <dominios> <porta> <servertoken> <ipaceito>"
