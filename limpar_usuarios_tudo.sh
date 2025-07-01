@@ -7,7 +7,6 @@ CYAN='\033[1;36m'
 YELLOW='\033[1;33m'
 RESET='\033[0m'
 
-# Spinner
 spinner() {
     local pid=$!
     local spin='|/-\'
@@ -20,7 +19,6 @@ spinner() {
     printf "\r"
 }
 
-# Confirmação
 echo -e "\n${RED}⚠️  ATENÇÃO: Este processo irá:${RESET}"
 echo -e "${YELLOW}- Apagar todos os usuários criados (exceto root e nobody)"
 echo "- Limpar senhas SSHPlus"
@@ -29,8 +27,32 @@ echo "- Apagar jobs do at"
 echo "- Limpar arquivos de teste"
 echo -e "- Remover todos os usuários de V2Ray e Xray (clientes do JSON)${RESET}"
 echo
-read -p $'\033[1;31mDeseja continuar? (s/N): \033[0m' confirm
 
+# Verifica se há backup existente
+ULTIMO_BACKUP=$(ls -dt /root/backup_limpeza_* 2>/dev/null | head -n1)
+if [ -d "$ULTIMO_BACKUP" ]; then
+    echo -e "${YELLOW}📦 Backup encontrado: ${ULTIMO_BACKUP}${RESET}"
+    read -p $'\033[1;33mDeseja restaurar este backup? (s/N): \033[0m' restaura
+    if [[ "$restaura" == "s" || "$restaura" == "S" ]]; then
+        echo -ne "${CYAN}🔄 Restaurando backup...${RESET} "
+        (
+            cp "$ULTIMO_BACKUP/passwd" /etc/passwd 2>/dev/null
+            cp "$ULTIMO_BACKUP/shadow" /etc/shadow 2>/dev/null
+            cp "$ULTIMO_BACKUP/group" /etc/group 2>/dev/null
+            cp "$ULTIMO_BACKUP/gshadow" /etc/gshadow 2>/dev/null
+            [ -f "$ULTIMO_BACKUP/usuarios.db" ] && cp "$ULTIMO_BACKUP/usuarios.db" /root/usuarios.db
+            [ -d "$ULTIMO_BACKUP/senha" ] && cp -r "$ULTIMO_BACKUP/senha" /etc/SSHPlus/
+            [ -f "$ULTIMO_BACKUP/v2ray_config.json" ] && cp "$ULTIMO_BACKUP/v2ray_config.json" /etc/v2ray/config.json
+            [ -f "$ULTIMO_BACKUP/xray_config.json" ] && cp "$ULTIMO_BACKUP/xray_config.json" /usr/local/etc/xray/config.json
+            [ -d "$ULTIMO_BACKUP/TesteAtlas" ] && cp -r "$ULTIMO_BACKUP/TesteAtlas" /etc/
+            [ -d "$ULTIMO_BACKUP/atlasteste" ] && cp -r "$ULTIMO_BACKUP/atlasteste" /root/
+        ) & spinner
+        echo -e "${GREEN}✓ Backup restaurado com sucesso.${RESET}"
+        exit 0
+    fi
+fi
+
+read -p $'\033[1;31mDeseja continuar com a limpeza? (s/N): \033[0m' confirm
 if [[ "$confirm" != "s" && "$confirm" != "S" ]]; then
     echo -e "${CYAN}❌ Operação cancelada.${RESET}"
     exit 1
@@ -38,11 +60,20 @@ fi
 
 echo -e "${CYAN}⏳ Iniciando limpeza...${RESET}"
 
-# Backups
-cp /etc/passwd /etc/passwd.bkp
-cp /etc/shadow /etc/shadow.bkp
-cp /etc/group /etc/group.bkp
-cp /etc/gshadow /etc/gshadow.bkp
+# Backup automático
+echo -ne "${CYAN}🔹 Gerando backup de segurança...${RESET} "
+(
+    BACKUP_DIR="/root/backup_limpeza_$(date +%Y%m%d_%H%M%S)"
+    mkdir -p "$BACKUP_DIR"
+    cp /etc/passwd /etc/shadow /etc/group /etc/gshadow "$BACKUP_DIR"
+    [ -f /root/usuarios.db ] && cp /root/usuarios.db "$BACKUP_DIR"
+    [ -d /etc/SSHPlus/senha ] && cp -r /etc/SSHPlus/senha "$BACKUP_DIR/senha"
+    [ -f /etc/v2ray/config.json ] && cp /etc/v2ray/config.json "$BACKUP_DIR/v2ray_config.json"
+    [ -f /usr/local/etc/xray/config.json ] && cp /usr/local/etc/xray/config.json "$BACKUP_DIR/xray_config.json"
+    [ -d /etc/TesteAtlas ] && cp -r /etc/TesteAtlas "$BACKUP_DIR/TesteAtlas"
+    [ -d /root/atlasteste ] && cp -r /root/atlasteste "$BACKUP_DIR/atlasteste"
+) & spinner
+echo -e "${GREEN}✓${RESET}"
 
 # Remover usuários
 echo -ne "${CYAN}🔹 Removendo usuários do sistema...${RESET}\n"
@@ -50,11 +81,7 @@ total_users_removed=0
 (
     while IFS=: read -r user _ uid _; do
         if [ "$uid" -ge 1000 ] && [ "$user" != "nobody" ] && [ "$user" != "root" ]; then
-            rm -rf "/home/$user"
-            sed -i "/^$user:/d" /etc/passwd
-            sed -i "/^$user:/d" /etc/shadow
-            sed -i "/^$user:/d" /etc/group
-            sed -i "/^$user:/d" /etc/gshadow
+            userdel -r -f "$user" 2>/dev/null
             ((total_users_removed++))
         fi
     done < /etc/passwd
@@ -81,6 +108,7 @@ echo -e "${GREEN}✓${RESET}"
 echo -ne "${CYAN}🔹 Limpando pastas de teste...${RESET} "
 (
     [ -d /etc/TesteAtlas ] && rm -rf /etc/TesteAtlas/*
+    [ -d /root/atlasteste ] && rm -rf /root/atlasteste/*
 ) & spinner
 echo -e "${GREEN}✓${RESET}"
 
