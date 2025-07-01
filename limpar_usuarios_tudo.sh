@@ -93,7 +93,7 @@ echo -e "${CYAN}🔹 Removendo usuários do sistema!${RESET}"
 # prepara lista e contador
 awk -F: '$3>=1000 && $1!~/^(root|nobody)$/{print $1}' /etc/passwd > /tmp/removed_list
 count=$(wc -l < /tmp/removed_list)
-echo -ne "${CYAN}🔹 $count usuários para remover...${RESET} "
+echo -ne "${CYAN}🔹${RESET} ${YELLOW}$count${RESET} ${CYAN}usuários para remover...${RESET} "
 # executa a remoção com spinner
 fun_prog "bash -c '
   while IFS= read -r u; do
