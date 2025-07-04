@@ -191,20 +191,32 @@ for domain in $(echo $domains | tr "," "\n"); do
     fi
 done
 
-# Configurar firewall em silêncio
-log_message "\n--- Configurando firewall para a porta $port ---\n"
+log_message "\n--- Configurando firewall para a porta $port (TCP/UDP) ---\n"
 if command_exists firewall-cmd; then
-    sudo firewall-cmd --zone=public --add-port=$port/tcp --permanent >/dev/null 2>&1
+    sudo firewall-cmd --zone=public --add-port=${port}/tcp --permanent >/dev/null 2>&1
+    sudo firewall-cmd --zone=public --add-port=${port}/udp --permanent >/dev/null 2>&1
     sudo firewall-cmd --reload >/dev/null 2>&1
 fi
 
 if command_exists iptables; then
+    # Remove todas as regras para a porta (TCP)
+    while sudo iptables -C INPUT -p tcp --dport $port -j ACCEPT 2>/dev/null; do
+        sudo iptables -D INPUT -p tcp --dport $port -j ACCEPT >/dev/null 2>&1
+    done
+    # Remove todas as regras para a porta (UDP)
+    while sudo iptables -C INPUT -p udp --dport $port -j ACCEPT 2>/dev/null; do
+        sudo iptables -D INPUT -p udp --dport $port -j ACCEPT >/dev/null 2>&1
+    done
+
+    # Agora adiciona só uma vez (TCP e UDP)
     sudo iptables -A INPUT -p tcp --dport $port -j ACCEPT >/dev/null 2>&1
+    sudo iptables -A INPUT -p udp --dport $port -j ACCEPT >/dev/null 2>&1
     sudo iptables-save | sudo tee /etc/iptables/rules.v4 >/dev/null 2>&1
 fi
 
 if command_exists ufw; then
     sudo ufw allow $port/tcp >/dev/null 2>&1
+    sudo ufw allow $port/udp >/dev/null 2>&1
 fi
 
 # Descompactar o arquivo ZIP
