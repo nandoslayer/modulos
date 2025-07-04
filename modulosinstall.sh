@@ -124,6 +124,39 @@ for dep in python3 curl unzip dos2unix; do
     fi
 done
 
+log_message "\n--- Verificando e instalando dependência libpython3.8 ---\n"
+
+# Detecta Ubuntu e sua versão
+OS_NAME="$(lsb_release -is 2>/dev/null || echo Unknown)"
+OS_VER="$(lsb_release -rs 2>/dev/null | cut -d. -f1 || echo 0)"
+
+if [ "$OS_NAME" = "Ubuntu" ]; then
+    if [ "$OS_VER" -ge 22 ]; then
+        # Ubuntu 22.04 ou superior - usa python3.10, instala python3.8 manualmente
+        apt-get update >/dev/null 2>&1
+        apt-get install -y software-properties-common >/dev/null 2>&1
+        add-apt-repository ppa:deadsnakes/ppa -y >/dev/null 2>&1
+        apt-get update >/dev/null 2>&1
+        apt-get install -y libpython3.8 python3.8 >/dev/null 2>&1
+        log_message "libpython3.8 (e python3.8) instalado pelo PPA para Ubuntu $OS_VER."
+    else
+        # Ubuntu < 22.04 (focal, bionic, etc)
+        apt-get update >/dev/null 2>&1
+        apt-get install -y libpython3.8 >/dev/null 2>&1
+        log_message "libpython3.8 instalado do repositório padrão."
+    fi
+else
+    # Tenta instalar para Debian ou outros
+    apt-get update >/dev/null 2>&1
+    apt-get install -y libpython3.8 >/dev/null 2>&1
+    log_message "libpython3.8 instalado (Debian ou outro)."
+fi
+
+# Testa se a dependência ficou instalada
+if [ ! -f /usr/lib/x86_64-linux-gnu/libpython3.8.so.1.0 ] && [ ! -f /usr/lib/aarch64-linux-gnu/libpython3.8.so.1.0 ]; then
+    log_message "ERRO: Não foi possível instalar a libpython3.8. O ModuloSinc pode não funcionar!"
+fi
+
 # Parar e desabilitar serviços existentes
 log_message "\n--- Parando e desabilitando serviços existentes ---\n"
 servicesm=$(systemctl list-units --type=service --no-legend 'modulo*.service' | awk '{print $1}')
