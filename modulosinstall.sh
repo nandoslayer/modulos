@@ -108,22 +108,6 @@ else
     log_message "ufw não encontrado."
 fi
 
-log_message "\n--- Verificando dependências obrigatórias ---\n"
-for dep in python3 curl unzip dos2unix; do
-    if ! command_exists $dep; then
-        log_message "Dependência ausente: $dep. Instalando..."
-        apt-get install -y $dep >/dev/null 2>&1
-        if command_exists $dep; then
-            log_message "$dep instalado com sucesso."
-        else
-            log_message "Erro ao instalar $dep."
-            exit 1
-        fi
-    else
-        log_message "$dep já instalado."
-    fi
-done
-
 log_message "\n--- Verificando e instalando dependências do sistema ---\n"
 
 sudo apt update -qq > /dev/null
@@ -140,24 +124,71 @@ if grep -qi "ubuntu" /etc/os-release; then
     fi
 fi
 
-packages_to_install=(
-    software-properties-common
-    curl language-pack-en bc nethogs screen nano unzip lsof net-tools dos2unix
-    nload pkg-config jq figlet python3 python3-pip python python-pip build-essential
+# Lista de dependências, algumas são checadas por comando, outras por arquivo/pacote
+deps_bin=(
+    curl bc nethogs screen nano unzip lsof net-tools dos2unix
+    nload pkg-config jq figlet python3 python3-pip build-essential
+    git ca-certificates
+)
+deps_pkg=(
+    software-properties-common language-pack-en python python-pip
     libssl-dev libffi-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev
-    wget git ca-certificates
     python3.8 python3.8-dev python3.8-venv libpython3.8
 )
 
-for pkg in "${packages_to_install[@]}"; do
-    log_message "Instalando/reinstalando $pkg ..."
-    sudo apt-get install -y -qq --reinstall "$pkg" > /dev/null
+# Instala os comandos binários se faltar
+for dep in "${deps_bin[@]}"; do
+    if ! command -v "$dep" >/dev/null 2>&1; then
+        log_message "Instalando $dep ..."
+        sudo apt-get install -y -qq --reinstall "$dep" > /dev/null
+    fi
+done
+
+# Instala pacotes que não são comandos diretos
+for pkg in "${deps_pkg[@]}"; do
+    if ! dpkg -s "$pkg" 2>/dev/null | grep -q "Status: install ok installed"; then
+        log_message "Instalando $pkg ..."
+        sudo apt-get install -y -qq --reinstall "$pkg" > /dev/null
+    fi
 done
 
 log_message "Dependências e libs principais instaladas!"
 
 # Testa se a dependência ficou instalada
-if [ ! -f /usr/lib/x86_64-linux-gnu/libpython3.8.so.1.0 ] && [ ! -f /usr/lib/aarch64-linux-gnu/libpython3.8.so.1.0 ]; then
+libok=false
+if [ -f /usr/lib/x86_64-linux-gnu/libpython3.8.so.1.0 ] || [ -f /usr/lib/aarch64-linux-gnu/libpython3.8.so.1.0 ]; then
+    libok=true
+fi
+
+# Se não encontrar a lib, tenta instalar manualmente via .deb oficial do Ubuntu focal
+if ! $libok; then
+    log_message "Tentando instalar libpython3.8 via pacote .deb oficial (fallback)..."
+    ARCH=$(uname -m)
+    if [ "$ARCH" = "x86_64" ]; then
+        LIBURL="http://archive.ubuntu.com/ubuntu/pool/universe/p/python3.8/libpython3.8_3.8.10-0ubuntu1~20.04.9_amd64.deb"
+    elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+        LIBURL="http://ports.ubuntu.com/ubuntu-ports/pool/universe/p/python3.8/libpython3.8_3.8.10-0ubuntu1~20.04.9_arm64.deb"
+    else
+        log_message "ERRO: Arquitetura $ARCH não suportada para libpython3.8 .deb fallback."
+        LIBURL=""
+    fi
+
+    if [ -n "$LIBURL" ]; then
+        TMPDEB="/tmp/libpython3.8.deb"
+        wget -q -O "$TMPDEB" "$LIBURL"
+        sudo dpkg -i "$TMPDEB" >/dev/null 2>&1
+        rm -f "$TMPDEB"
+        # Testa de novo
+        if [ -f /usr/lib/x86_64-linux-gnu/libpython3.8.so.1.0 ] || [ -f /usr/lib/aarch64-linux-gnu/libpython3.8.so.1.0 ]; then
+            log_message "libpython3.8 instalada com sucesso via .deb!"
+            libok=true
+        else
+            log_message "ERRO: Não foi possível instalar a libpython3.8 nem via .deb."
+        fi
+    fi
+fi
+
+if ! $libok; then
     log_message "ERRO: Não foi possível instalar a libpython3.8. O ModuloSinc pode não funcionar!"
 fi
 
