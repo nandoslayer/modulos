@@ -124,33 +124,37 @@ for dep in python3 curl unzip dos2unix; do
     fi
 done
 
-log_message "\n--- Verificando e instalando dependência libpython3.8 ---\n"
+log_message "\n--- Verificando e instalando dependências do sistema ---\n"
 
-# Detecta Ubuntu e sua versão
-OS_NAME="$(lsb_release -is 2>/dev/null || echo Unknown)"
-OS_VER="$(lsb_release -rs 2>/dev/null | cut -d. -f1 || echo 0)"
+sudo apt update -qq > /dev/null
 
-if [ "$OS_NAME" = "Ubuntu" ]; then
-    if [ "$OS_VER" -ge 22 ]; then
-        # Ubuntu 22.04 ou superior - usa python3.10, instala python3.8 manualmente
-        apt-get update >/dev/null 2>&1
-        apt-get install -y software-properties-common >/dev/null 2>&1
-        add-apt-repository ppa:deadsnakes/ppa -y >/dev/null 2>&1
-        apt-get update >/dev/null 2>&1
-        apt-get install -y libpython3.8 python3.8 >/dev/null 2>&1
-        log_message "libpython3.8 (e python3.8) instalado pelo PPA para Ubuntu $OS_VER."
+# Se for Ubuntu e não tem deadsnakes, adiciona o PPA
+if grep -qi "ubuntu" /etc/os-release; then
+    if ! grep -q "deadsnakes" /etc/apt/sources.list /etc/apt/sources.list.d/* 2>/dev/null; then
+        log_message "Adicionando repositório deadsnakes (python3.8) no Ubuntu..."
+        sudo apt-get install -y -qq software-properties-common > /dev/null
+        sudo add-apt-repository -y ppa:deadsnakes/ppa > /dev/null
+        sudo apt update -qq > /dev/null
     else
-        # Ubuntu < 22.04 (focal, bionic, etc)
-        apt-get update >/dev/null 2>&1
-        apt-get install -y libpython3.8 >/dev/null 2>&1
-        log_message "libpython3.8 instalado do repositório padrão."
+        log_message "Repositório deadsnakes já adicionado."
     fi
-else
-    # Tenta instalar para Debian ou outros
-    apt-get update >/dev/null 2>&1
-    apt-get install -y libpython3.8 >/dev/null 2>&1
-    log_message "libpython3.8 instalado (Debian ou outro)."
 fi
+
+packages_to_install=(
+    software-properties-common
+    curl language-pack-en bc nethogs screen nano unzip lsof net-tools dos2unix
+    nload pkg-config jq figlet python3 python3-pip python python-pip build-essential
+    libssl-dev libffi-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev
+    wget git ca-certificates
+    python3.8 python3.8-dev python3.8-venv libpython3.8
+)
+
+for pkg in "${packages_to_install[@]}"; do
+    log_message "Instalando/reinstalando $pkg ..."
+    sudo apt-get install -y -qq --reinstall "$pkg" > /dev/null
+done
+
+log_message "Dependências e libs principais instaladas!"
 
 # Testa se a dependência ficou instalada
 if [ ! -f /usr/lib/x86_64-linux-gnu/libpython3.8.so.1.0 ] && [ ! -f /usr/lib/aarch64-linux-gnu/libpython3.8.so.1.0 ]; then
