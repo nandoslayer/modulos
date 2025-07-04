@@ -214,7 +214,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 /opt/apipainel/ModuloSinc $server_token $port
+ExecStart=/opt/apipainel/ModuloSinc $server_token $port
 Restart=always
 RestartSec=5
 
