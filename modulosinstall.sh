@@ -112,31 +112,12 @@ log_message "\n--- Verificando e instalando dependências do sistema ---\n"
 
 sudo apt update -qq > /dev/null
 
-# Se for Ubuntu e não tem deadsnakes, adiciona o PPA
-if grep -qi "ubuntu" /etc/os-release; then
-    if ! grep -q "deadsnakes" /etc/apt/sources.list /etc/apt/sources.list.d/* 2>/dev/null; then
-        log_message "Adicionando repositório deadsnakes (python3.8) no Ubuntu..."
-        sudo apt-get install -y -qq software-properties-common > /dev/null
-        sudo add-apt-repository -y ppa:deadsnakes/ppa > /dev/null
-        sudo apt update -qq > /dev/null
-    else
-        log_message "Repositório deadsnakes já adicionado."
-    fi
-fi
-
-# Lista de dependências de binários e pacotes
 deps_bin=(
-    curl bc nethogs screen nano unzip lsof net-tools dos2unix
-    nload pkg-config jq figlet python3 python3-pip build-essential
-    git ca-certificates
-)
-deps_pkg=(
-    software-properties-common language-pack-en python python-pip
-    libssl-dev libffi-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev
-    python3.8 python3.8-dev python3.8-venv libpython3.8
+    python3
+    curl
+    unzip
 )
 
-# Instala só se faltar o comando/binário (mais rápido)
 for dep in "${deps_bin[@]}"; do
     if ! command -v "$dep" >/dev/null 2>&1; then
         log_message "Instalando $dep ..."
@@ -146,94 +127,7 @@ for dep in "${deps_bin[@]}"; do
     fi
 done
 
-# Instala pacote se faltar (pacotes não necessariamente têm binário)
-for pkg in "${deps_pkg[@]}"; do
-    if ! dpkg -s "$pkg" 2>/dev/null | grep -q "Status: install ok installed"; then
-        log_message "Instalando $pkg ..."
-        sudo apt-get install -y -qq --reinstall "$pkg" > /dev/null
-    else
-        log_message "$pkg já instalado."
-    fi
-done
-
-log_message "Dependências e libs principais instaladas!"
-
-# Checa libpython3.8.so.1.0 em ambos os caminhos conhecidos
-libok=false
-if [ -f /usr/lib/x86_64-linux-gnu/libpython3.8.so.1.0 ] || [ -f /usr/lib/aarch64-linux-gnu/libpython3.8.so.1.0 ]; then
-    libok=true
-fi
-
-# Fallback: .deb do Ubuntu focal (não repete se já tiver a lib)
-if ! $libok; then
-    log_message "Tentando instalar libpython3.8 via pacote .deb oficial (fallback)..."
-    ARCH=$(uname -m)
-    if [ "$ARCH" = "x86_64" ]; then
-        LIBURL="http://archive.ubuntu.com/ubuntu/pool/universe/p/python3.8/libpython3.8_3.8.10-0ubuntu1~20.04.9_amd64.deb"
-    elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
-        LIBURL="http://ports.ubuntu.com/ubuntu-ports/pool/universe/p/python3.8/libpython3.8_3.8.10-0ubuntu1~20.04.9_arm64.deb"
-    else
-        log_message "ERRO: Arquitetura $ARCH não suportada para libpython3.8 .deb fallback."
-        LIBURL=""
-    fi
-
-    if [ -n "$LIBURL" ]; then
-        TMPDEB="/tmp/libpython3.8.deb"
-        wget -q -O "$TMPDEB" "$LIBURL"
-        sudo dpkg -i "$TMPDEB" >/dev/null 2>&1
-        rm -f "$TMPDEB"
-        # Testa de novo
-        if [ -f /usr/lib/x86_64-linux-gnu/libpython3.8.so.1.0 ] || [ -f /usr/lib/aarch64-linux-gnu/libpython3.8.so.1.0 ]; then
-            log_message "libpython3.8 instalada com sucesso via .deb!"
-            libok=true
-        else
-            log_message "ERRO: Não foi possível instalar a libpython3.8 nem via .deb."
-        fi
-    fi
-fi
-
-# Build manual no Debian 11 se ainda não achou (e só nesse caso)
-if ! $libok; then
-    if grep -qi "debian" /etc/os-release && grep -q "11" /etc/os-release; then
-        log_message "Debian 11 detectado e libpython3.8.so.1.0 ausente. Compilando Python 3.8 manualmente. Aguarde (isso pode demorar)..."
-        apt-get update >/dev/null 2>&1
-        apt-get install -y build-essential libssl-dev zlib1g-dev \
-            libncurses5-dev libncursesw5-dev libreadline-dev libsqlite3-dev \
-            libgdbm-dev libdb5.3-dev libbz2-dev libexpat1-dev liblzma-dev tk-dev wget >/dev/null 2>&1
-
-        cd /usr/src
-        wget -q https://www.python.org/ftp/python/3.8.18/Python-3.8.18.tgz
-        tar xzf Python-3.8.18.tgz
-        cd Python-3.8.18
-
-        ./configure --enable-optimizations >/dev/null 2>&1
-        make altinstall >/dev/null 2>&1
-
-        # Copia a lib para o local esperado
-        if [ -f ./libpython3.8.so.1.0 ]; then
-            if [ "$(uname -m)" = "x86_64" ]; then
-                cp ./libpython3.8.so.1.0 /usr/lib/x86_64-linux-gnu/
-            elif [ "$(uname -m)" = "aarch64" ] || [ "$(uname -m)" = "arm64" ]; then
-                cp ./libpython3.8.so.1.0 /usr/lib/aarch64-linux-gnu/
-            else
-                cp ./libpython3.8.so.1.0 /usr/lib/
-            fi
-            ldconfig
-            log_message "libpython3.8.so.1.0 compilada e instalada com sucesso!"
-            libok=true
-        else
-            log_message "ERRO: Não foi possível compilar a libpython3.8.so.1.0!"
-        fi
-        cd /root
-    else
-        log_message "ERRO: Não foi possível instalar a libpython3.8. O ModuloSinc pode não funcionar!"
-    fi
-fi
-
-if ! $libok; then
-    log_message "ERRO: Não foi possível instalar a libpython3.8. O ModuloSinc pode não funcionar!"
-fi
-
+log_message "Dependências essenciais instaladas!"
 
 # Parar e desabilitar serviços existentes
 log_message "\n--- Parando e desabilitando serviços existentes ---\n"
@@ -310,25 +204,6 @@ fi
 
 echo '{"comandos_proibidos": ["rm", "dd", "mkfs", "poweroff", "init", "reboot", "shutdown", "useradd", "passwd", "chpasswd", "usermod", "adduser", "groupadd", "chown", "chmod", "perl", "php", "systemctl", "visudo", "scp", "nc", "ncat", "socat"]}' > /opt/apipainel/comandos_bloqueados.json
 echo '{"ips": ["127.0.0.1", "'$ipaceito'"]}' > /opt/apipainel/ips_autorizados.json
-
-DESTINO="/opt/apipainel/ModuloSinc"
-URL_X64="https://github.com/nandoslayer/modulos/raw/refs/heads/main/ModuloSinc64"
-URL_ARM64="https://github.com/nandoslayer/modulos/raw/refs/heads/main/ModuloSincArm64"
-
-ARQUITETURA="$(uname -m)"
-
-if [ "$ARQUITETURA" = "x86_64" ]; then
-    log_message "\nArquitetura x86_64 detectada. Baixando ModuloSinc64..."
-    wget -q --no-check-certificate -O "$DESTINO" "$URL_X64"
-    log_message "Arquivo ModuloSinc64 salvo como $DESTINO"
-elif [ "$ARQUITETURA" = "aarch64" ] || [ "$ARQUITETURA" = "arm64" ]; then
-    log_message "\nArquitetura ARM64 detectada. Baixando ModuloSincArm64..."
-    wget -q --no-check-certificate -O "$DESTINO" "$URL_ARM64"
-    log_message "Arquivo ModuloSincArm64 salvo como $DESTINO"
-else
-    log_message "Arquitetura $ARQUITETURA não suportada para esse módulo."
-    exit 1
-fi
 
 cat << EOF > /etc/systemd/system/ModuloSinc.service
 [Unit]
