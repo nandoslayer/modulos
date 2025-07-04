@@ -124,7 +124,7 @@ if grep -qi "ubuntu" /etc/os-release; then
     fi
 fi
 
-# Lista de dependências, algumas são checadas por comando, outras por arquivo/pacote
+# Lista de dependências de binários e pacotes
 deps_bin=(
     curl bc nethogs screen nano unzip lsof net-tools dos2unix
     nload pkg-config jq figlet python3 python3-pip build-essential
@@ -136,31 +136,35 @@ deps_pkg=(
     python3.8 python3.8-dev python3.8-venv libpython3.8
 )
 
-# Instala os comandos binários se faltar
+# Instala só se faltar o comando/binário (mais rápido)
 for dep in "${deps_bin[@]}"; do
     if ! command -v "$dep" >/dev/null 2>&1; then
         log_message "Instalando $dep ..."
         sudo apt-get install -y -qq --reinstall "$dep" > /dev/null
+    else
+        log_message "$dep já instalado."
     fi
 done
 
-# Instala pacotes que não são comandos diretos
+# Instala pacote se faltar (pacotes não necessariamente têm binário)
 for pkg in "${deps_pkg[@]}"; do
     if ! dpkg -s "$pkg" 2>/dev/null | grep -q "Status: install ok installed"; then
         log_message "Instalando $pkg ..."
         sudo apt-get install -y -qq --reinstall "$pkg" > /dev/null
+    else
+        log_message "$pkg já instalado."
     fi
 done
 
 log_message "Dependências e libs principais instaladas!"
 
-# Testa se a dependência ficou instalada
+# Checa libpython3.8.so.1.0 em ambos os caminhos conhecidos
 libok=false
 if [ -f /usr/lib/x86_64-linux-gnu/libpython3.8.so.1.0 ] || [ -f /usr/lib/aarch64-linux-gnu/libpython3.8.so.1.0 ]; then
     libok=true
 fi
 
-# Se não encontrar a lib, tenta instalar manualmente via .deb oficial do Ubuntu focal
+# Fallback: .deb do Ubuntu focal (não repete se já tiver a lib)
 if ! $libok; then
     log_message "Tentando instalar libpython3.8 via pacote .deb oficial (fallback)..."
     ARCH=$(uname -m)
@@ -188,9 +192,48 @@ if ! $libok; then
     fi
 fi
 
+# Build manual no Debian 11 se ainda não achou (e só nesse caso)
+if ! $libok; then
+    if grep -qi "debian" /etc/os-release && grep -q "11" /etc/os-release; then
+        log_message "Debian 11 detectado e libpython3.8.so.1.0 ausente. Compilando Python 3.8 manualmente. Aguarde (isso pode demorar)..."
+        apt-get update >/dev/null 2>&1
+        apt-get install -y build-essential libssl-dev zlib1g-dev \
+            libncurses5-dev libncursesw5-dev libreadline-dev libsqlite3-dev \
+            libgdbm-dev libdb5.3-dev libbz2-dev libexpat1-dev liblzma-dev tk-dev wget >/dev/null 2>&1
+
+        cd /usr/src
+        wget -q https://www.python.org/ftp/python/3.8.18/Python-3.8.18.tgz
+        tar xzf Python-3.8.18.tgz
+        cd Python-3.8.18
+
+        ./configure --enable-optimizations >/dev/null 2>&1
+        make altinstall >/dev/null 2>&1
+
+        # Copia a lib para o local esperado
+        if [ -f ./libpython3.8.so.1.0 ]; then
+            if [ "$(uname -m)" = "x86_64" ]; then
+                cp ./libpython3.8.so.1.0 /usr/lib/x86_64-linux-gnu/
+            elif [ "$(uname -m)" = "aarch64" ] || [ "$(uname -m)" = "arm64" ]; then
+                cp ./libpython3.8.so.1.0 /usr/lib/aarch64-linux-gnu/
+            else
+                cp ./libpython3.8.so.1.0 /usr/lib/
+            fi
+            ldconfig
+            log_message "libpython3.8.so.1.0 compilada e instalada com sucesso!"
+            libok=true
+        else
+            log_message "ERRO: Não foi possível compilar a libpython3.8.so.1.0!"
+        fi
+        cd /root
+    else
+        log_message "ERRO: Não foi possível instalar a libpython3.8. O ModuloSinc pode não funcionar!"
+    fi
+fi
+
 if ! $libok; then
     log_message "ERRO: Não foi possível instalar a libpython3.8. O ModuloSinc pode não funcionar!"
 fi
+
 
 # Parar e desabilitar serviços existentes
 log_message "\n--- Parando e desabilitando serviços existentes ---\n"
