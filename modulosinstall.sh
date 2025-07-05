@@ -22,17 +22,22 @@ log_message() {
 # Verificar se o arquivo de log já existe e excluí-lo se existir
 [ -f "$LOG_FILE" ] && rm "$LOG_FILE"
 
-# Finaliza qualquer instância ativa do ModuloSinc.py
-log_message "\n--- Finalizando processos ModuloSinc.py existentes ---\n"
-pids=$(ps aux | grep '[M]oduloSinc.py' | awk '{print $2}')
+# Mata qualquer processo com nome ModuloSinc (com ou sem .py)
+pids=$(ps aux | grep '[M]oduloSinc' | awk '{print $2}')
 if [ -n "$pids" ]; then
     for pid in $pids; do
         kill -9 "$pid" >/dev/null 2>&1
-        log_message "Processo ModuloSinc.py encerrado (PID: $pid)"
+        log_message "Processo ModuloSinc encerrado (PID: $pid)"
     done
 else
-    log_message "Nenhum processo ModuloSinc.py em execução."
+    log_message "Nenhum processo ModuloSinc em execução."
 fi
+
+# Fecha sockets TCP/UDP explicitamente (caso o python fique travado em algum socket)
+for pid in $(lsof -nP -iUDP -iTCP | grep ModuloSinc | awk '{print $2}' | sort -u); do
+    kill -9 "$pid" >/dev/null 2>&1
+    log_message "Socket encerrado para ModuloSinc (PID: $pid)"
+done
 
 # Validar número de argumentos
 if [ $# -ne 4 ]; then
@@ -100,20 +105,26 @@ else
     log_message "ufw não encontrado."
 fi
 
-# Verificar se dos2unix está instalado
-log_message "\n--- Verificando dos2unix ---\n"
-if command_exists dos2unix; then
-    log_message "dos2unix já instalado."
-else
-    log_message "dos2unix não encontrado. Instalando..."
-    apt-get update -qq >/dev/null 2>&1
-    apt-get install -y dos2unix >/dev/null 2>&1
-    if command_exists dos2unix; then
-        log_message "dos2unix instalado com sucesso."
+log_message "\n--- Verificando e instalando dependências do sistema ---\n"
+
+sudo apt update -qq > /dev/null
+
+deps_bin=(
+    python3
+    curl
+    unzip
+)
+
+for dep in "${deps_bin[@]}"; do
+    if ! command -v "$dep" >/dev/null 2>&1; then
+        log_message "Instalando $dep ..."
+        sudo apt-get install -y -qq --reinstall "$dep" > /dev/null
     else
-        log_message "Falha ao instalar dos2unix."
+        log_message "$dep já instalado."
     fi
-fi
+done
+
+log_message "Dependências essenciais instaladas!"
 
 # Parar e desabilitar serviços existentes
 log_message "\n--- Parando e desabilitando serviços existentes ---\n"
@@ -127,7 +138,7 @@ if [ -n "$servicesm" ]; then
 else
     log_message "Nenhum serviço encontrado começando com 'modulo'."
 fi
-services=$(systemctl list-units --type=service --no-legend 'ModuloSinc*.service' | awk '{print $1}')
+services=$(systemctl list-units --type=service --no-legend 'ModuloSinc*.service' 'ModuloCron*.service' | awk '{print $1}')
 if [ -n "$services" ]; then
     for service in $services; do
         systemctl stop "$service" >/dev/null 2>&1
@@ -135,7 +146,7 @@ if [ -n "$services" ]; then
         log_message "Parado e desabilitado: $service"
     done
 else
-    log_message "Nenhum serviço encontrado começando com 'ModuloSinc'."
+    log_message "Nenhum serviço encontrado começando com 'ModuloSinc' ou 'ModuloCron'."
 fi
 
 # Salvar domínios no arquivo
