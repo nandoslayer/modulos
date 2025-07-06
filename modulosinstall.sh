@@ -1,6 +1,5 @@
 #!/bin/bash
-clear
-
+set -x
 directory="/opt/apipainel"
 
 # Define cores para saída (opcional)
