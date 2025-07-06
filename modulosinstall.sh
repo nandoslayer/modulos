@@ -107,12 +107,14 @@ done
 
 log_header "Parando e desabilitando serviços antigos"
 for padrao in 'modulo*.service' 'ModuloSinc*.service' 'ModuloCron*.service'; do
-    services=$(systemctl list-units --type=service --no-legend "$padrao" | awk '{print $1}')
+    services=$(systemctl list-units --type=service --no-legend "$padrao" | awk '{print $1}' | grep -v '^$' | grep -v '^unknown$')
     if [ -n "$services" ]; then
         for service in $services; do
-            systemctl stop "$service" >/dev/null 2>&1
-            systemctl disable "$service" >/dev/null 2>&1
-            log_message "🔸 Parado e desabilitado: $service"
+            if [[ -n "$service" && "$service" != "unknown" ]]; then
+                systemctl stop "$service" >/dev/null 2>&1
+                systemctl disable "$service" >/dev/null 2>&1
+                log_message "🔸 Parado e desabilitado: $service"
+            fi
         done
     else
         log_message "🔸 Nenhum serviço encontrado com padrão $padrao."
