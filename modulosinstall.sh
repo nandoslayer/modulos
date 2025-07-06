@@ -13,6 +13,8 @@ LOG_FILE="/opt/apipainel/instalacao.log"
 DOMAINS_FILE="/opt/apipainel/dominios.txt"
 ZIP_FILE="/root/modulos.zip"
 
+[ ! -d /opt/apipainel ] && mkdir -p /opt/apipainel
+
 # Função para registrar mensagens no log
 log_message() {
     echo -e "$1" >> "$LOG_FILE"
@@ -35,8 +37,6 @@ log_status() {
 }
 
 log_header "INÍCIO DA INSTALAÇÃO - $(date '+%d/%m/%Y %H:%M:%S')"
-
-[ ! -d /opt/apipainel ] && mkdir -p /opt/apipainel
 
 # Limpa o log anterior e arquivos do diretório (exceto dominios.txt)
 [ -f "$LOG_FILE" ] && rm "$LOG_FILE"
