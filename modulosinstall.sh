@@ -93,12 +93,12 @@ for fw in firewalld iptables ufw; do
 done
 
 log_header "Verificando e instalando dependências do sistema"
-sudo apt update -qq > /dev/null
+sudo apt update -qq >> "$LOG_FILE" 2>&1
 deps_bin=(python3 curl unzip)
 for dep in "${deps_bin[@]}"; do
     if ! command -v "$dep" >/dev/null 2>&1; then
         log_message "Instalando $dep ..."
-        sudo apt-get install -y -qq --reinstall "$dep" > /dev/null
+        sudo apt-get install -y -qq --reinstall "$dep" >> "$LOG_FILE" 2>&1
         log_status $? "$dep instalado!" "Falha ao instalar $dep."
     else
         log_message "✅ $dep já instalado."
