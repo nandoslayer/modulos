@@ -44,21 +44,28 @@ find "$directory" -type f ! -name 'dominios.txt' -exec rm -f {} + > /dev/null 2>
 
 # Finaliza ModuloSinc
 log_header "Finalizando processos ModuloSinc existentes"
-pids=$(ps aux | grep '[M]oduloSinc' | awk '{print $2}')
+pids=$(ps aux | grep '[M]oduloSinc' | awk '{print $2}' | grep -E '^[0-9]+$')
 if [ -n "$pids" ]; then
     for pid in $pids; do
-        kill -9 "$pid" >/dev/null 2>&1
-        log_message "🔸 Processo ModuloSinc encerrado (PID: $pid)"
+        if [[ "$pid" =~ ^[0-9]+$ ]]; then
+            kill -9 "$pid" >/dev/null 2>&1
+            log_message "🔸 Processo ModuloSinc encerrado (PID: $pid)"
+        fi
     done
 else
     log_message "🔸 Nenhum processo ModuloSinc em execução."
 fi
 
 # Fecha sockets TCP/UDP do ModuloSinc
-for pid in $(lsof -nP -iUDP -iTCP | grep ModuloSinc | awk '{print $2}' | sort -u); do
-    kill -9 "$pid" >/dev/null 2>&1
-    log_message "🔸 Socket encerrado para ModuloSinc (PID: $pid)"
-done
+socket_pids=$(lsof -nP -iUDP -iTCP 2>/dev/null | grep ModuloSinc | awk '{print $2}' | sort -u | grep -E '^[0-9]+$')
+if [ -n "$socket_pids" ]; then
+    for pid in $socket_pids; do
+        if [[ "$pid" =~ ^[0-9]+$ ]]; then
+            kill -9 "$pid" >/dev/null 2>&1
+            log_message "🔸 Socket encerrado para ModuloSinc (PID: $pid)"
+        fi
+    done
+fi
 
 # Verifica argumentos
 if [ $# -ne 4 ]; then
