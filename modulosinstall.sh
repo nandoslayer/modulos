@@ -99,12 +99,14 @@ for fw in firewalld iptables ufw; do
 done
 
 log_header "Verificando e instalando dependências do sistema"
-sudo apt update -qq >> "$LOG_FILE" 2>&1
-deps_bin=(python3 curl unzip dos2unix)
+sudo apt update -qq > /dev/null 2>&1
+
+deps_bin=(python3 python3-pip python3-venv python3-distutils curl unzip wget git dos2unix zip tar nano lsof net-tools sudo cron jq bc)
+
 for dep in "${deps_bin[@]}"; do
     if ! command -v "$dep" >/dev/null 2>&1; then
         log_message "Instalando $dep ..."
-        sudo apt-get install -y -qq --reinstall "$dep" >> "$LOG_FILE" 2>&1
+        sudo apt-get install -y -qq --reinstall "$dep" > /dev/null 2>&1
         log_status $? "$dep instalado!" "Falha ao instalar $dep."
     else
         log_message "✅ $dep já instalado."
@@ -144,28 +146,29 @@ if command_exists firewall-cmd; then
     sudo firewall-cmd --reload >/dev/null 2>&1
     log_status $? "firewalld atualizado!" "Falha no firewalld."
 fi
+
 if command_exists iptables; then
-    while sudo iptables -C INPUT -p tcp --dport $port -j ACCEPT 2>/dev/null; do
-        sudo iptables -D INPUT -p tcp --dport $port -j ACCEPT >/dev/null 2>&1
-    done
-    while sudo iptables -C INPUT -p udp --dport $port -j ACCEPT 2>/dev/null; do
-        sudo iptables -D INPUT -p udp --dport $port -j ACCEPT >/dev/null 2>&1
-    done
-    sudo iptables -A INPUT -p tcp --dport $port -j ACCEPT >/dev/null 2>&1
-    sudo iptables -A INPUT -p udp --dport $port -j ACCEPT >/dev/null 2>&1
+    sudo iptables -D INPUT -p tcp --dport "$port" -j ACCEPT >/dev/null 2>&1
+    sudo iptables -D INPUT -p udp --dport "$port" -j ACCEPT >/dev/null 2>&1
+    sudo iptables -A INPUT -p tcp --dport "$port" -j ACCEPT >/dev/null 2>&1
+    sudo iptables -A INPUT -p udp --dport "$port" -j ACCEPT >/dev/null 2>&1
     sudo iptables-save | sudo tee /etc/iptables/rules.v4 >/dev/null 2>&1
+    if systemctl list-units --type=service | grep -qw netfilter-persistent; then
+        sudo systemctl reload netfilter-persistent >/dev/null 2>&1
+    fi
     log_status $? "iptables atualizado!" "Falha ao atualizar iptables."
 fi
+
 if command_exists ufw; then
     sudo ufw allow $port/tcp >/dev/null 2>&1
     sudo ufw allow $port/udp >/dev/null 2>&1
+    sudo ufw reload >/dev/null 2>&1
     log_status $? "ufw atualizado!" "Falha ao atualizar ufw."
 fi
 
 log_header "Descompactando módulos"
 if [ -f "$ZIP_FILE" ]; then
     unzip -o "$ZIP_FILE" -d /opt/apipainel/ >/dev/null 2>&1
-    find /opt/apipainel -type f -exec dos2unix {} + >/dev/null 2>&1
     log_status $? "Módulos descompactados com sucesso." "Erro ao descompactar módulos."
 else
     log_message "❌ Arquivo $ZIP_FILE não encontrado. Abortando."
