@@ -101,12 +101,6 @@ done
 log_header "Verificando e instalando dependências do sistema"
 sudo apt update -qq > /dev/null 2>&1
 
-if grep -qi 'ubuntu' /etc/os-release && grep -q '18.04' /etc/os-release; then
-    sudo apt-get install -y -qq software-properties-common > /dev/null 2>&1
-    sudo add-apt-repository ppa:deadsnakes/ppa -y > /dev/null 2>&1
-    sudo apt-get update -qq > /dev/null 2>&1
-fi
-
 deps_bin=(python3 python3-pip python3-venv python3-distutils curl unzip wget git dos2unix zip tar nano lsof net-tools sudo cron jq bc)
 
 for dep in "${deps_bin[@]}"; do
