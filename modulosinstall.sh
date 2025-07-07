@@ -100,7 +100,7 @@ done
 
 log_header "Verificando e instalando dependências do sistema"
 sudo apt update -qq >> "$LOG_FILE" 2>&1
-deps_bin=(python3 curl unzip)
+deps_bin=(python3 curl unzip dos2unix)
 for dep in "${deps_bin[@]}"; do
     if ! command -v "$dep" >/dev/null 2>&1; then
         log_message "Instalando $dep ..."
