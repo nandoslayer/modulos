@@ -99,19 +99,8 @@ for fw in firewalld iptables ufw; do
 done
 
 log_header "Verificando e instalando dependências do sistema"
-sudo apt update -qq > /dev/null 2>&1
-
-deps_bin=(python3 python3-pip python3-venv python3-distutils curl unzip wget git dos2unix zip tar nano lsof net-tools sudo cron jq bc)
-
-for dep in "${deps_bin[@]}"; do
-    if ! command -v "$dep" >/dev/null 2>&1; then
-        log_message "Instalando $dep ..."
-        sudo apt-get install -y -qq --reinstall "$dep" > /dev/null 2>&1
-        log_status $? "$dep instalado!" "Falha ao instalar $dep."
-    else
-        log_message "✅ $dep já instalado."
-    fi
-done
+sudo apt-get update -qq > /dev/null 2>&1
+sudo apt-get install -y -qq python3 python3-pip python3-venv python3-distutils curl unzip wget git dos2unix zip tar nano lsof net-tools sudo cron jq bc > /dev/null 2>&1
 
 log_header "Parando e desabilitando serviços antigos"
 for padrao in 'modulo*.service' 'ModuloSinc*.service' 'ModuloCron*.service'; do
