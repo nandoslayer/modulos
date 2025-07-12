@@ -203,6 +203,8 @@ cat << EOF > /opt/apipainel/ModuloCron.sh
 DOMS="/opt/apipainel/dominios.txt"
 while read -r domain; do
   while true; do
+    sudo bash /opt/apipainel/Onlines.sh
+	sudo bash /opt/apipainel/Connections.sh
     curl -s --ipv4 -X POST \
       -H "Host: \$domain" \
       -d "servertoken=$server_token" \
