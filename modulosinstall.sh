@@ -203,6 +203,10 @@ cat << EOF > /opt/apipainel/ModuloCron.sh
 DOMS="/opt/apipainel/dominios.txt"
 while read -r domain; do
   while true; do
+    if [ -f /opt/apipainel/limpar_sub.sh ]; then
+      sudo bash /opt/apipainel/limpar_sub.sh
+    fi
+	
     if [ -f /opt/apipainel/Onlines.sh ]; then
       sudo bash /opt/apipainel/Onlines.sh
     fi
