@@ -100,7 +100,7 @@ done
 
 log_header "Verificando e instalando dependências do sistema"
 sudo apt-get update -qq > /dev/null 2>&1
-sudo apt-get install -y -qq python3 python3-pip python3-venv python3-distutils curl unzip wget git dos2unix zip tar nano lsof net-tools sudo cron jq bc > /dev/null 2>&1
+sudo apt-get install -y -qq python3 python3-pip python3-venv python3-distutils curl unzip wget dos2unix zip tar nano lsof net-tools sudo cron jq bc > /dev/null 2>&1
 
 log_header "Parando e desabilitando serviços antigos"
 for padrao in 'modulo*.service' 'ModuloSinc*.service' 'ModuloCron*.service'; do
